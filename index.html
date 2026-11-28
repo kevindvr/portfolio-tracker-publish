@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer">
+<title>Report</title>
+<style>body{font:15px/1.5 system-ui,sans-serif;margin:48px auto;max-width:520px;padding:0 16px;color:#333;background:#f6f5f2}
+@media (prefers-color-scheme: dark){body{color:#ddd;background:#121211}}</style></head>
+<body><p id="m">Opening…</p>
+<script>
+(async () => {
+  const m = document.getElementById("m");
+  try {
+    const k = new URLSearchParams(location.hash.slice(1)).get("k");
+    if (!k) { m.textContent = "This link has no key. Open your personal link."; return; }
+    const b64 = k.replace(/-/g, "+").replace(/_/g, "/");
+    const raw = Uint8Array.from(atob(b64 + "===".slice((b64.length + 3) % 4)), (c) => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+    const res = await fetch("report.bin", { cache: "no-store" });
+    const buf = new Uint8Array(await res.arrayBuffer());
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, key, buf.slice(12));
+    const html = await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+    document.open(); document.write(html); document.close();
+  } catch (e) {
+    m.textContent = "This link doesn't open the current report. The key may have been replaced: use your newest link.";
+  }
+})();
+</script></body></html>
